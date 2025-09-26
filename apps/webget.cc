@@ -1,6 +1,11 @@
 #include "debug.hh"
 #include "socket.hh"
 
+// [TODO] Are the following imports necessary?
+#include "address.hh"
+
+
+
 #include <cstdlib>
 #include <iostream>
 #include <span>
@@ -11,8 +16,27 @@ using namespace std;
 namespace {
 void get_URL( const string& host, const string& path )
 {
-  debug( "Function called: get_URL( \"{}\", \"{}\" )", host, path );
-  debug( "get_URL() function not yet implemented" );
+  // debug( "Function called: get_URL( \"{}\", \"{}\" )", host, path );
+  // debug( "get_URL() function not yet implemented" );
+  
+  // is this correct style wise
+  Address web_address(host, "http"); 
+  TCPSocket tcp_socket;
+  tcp_socket.connect(web_address);
+	
+  std::string message_str = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
+  std::string_view message(message_str);
+  
+  // write_all or write?
+  tcp_socket.write_all(message);
+
+  std::string buffer;
+  while(!tcp_socket.eof()) {
+  	tcp_socket.read(buffer);
+	cout << buffer;
+  }
+
+  tcp_socket.close();
 }
 } // namespace
 
