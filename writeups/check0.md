@@ -11,7 +11,7 @@ I would like to credit/thank these classmates for their help: Ganesh Venu (ganes
 
 This lab took me about 5 hours to do. I did attend the lab session.
 
-My secret code from section 2.1 was: [code here]
+My secret code from section 2.1 was: 916094 
 
 I was surprised by or edified to learn that: Sockets and connections are handled through file descriptors. I had prior knowledge of how file descriptors worked (from CS111), but didn't fully realize that Unix systems used this abstraction for sockets and network handling. This is an elegant approach to unifying the computer's various responsibilities. This checkpoint taught me that reading/writing information to/from a socket is as simple as reading/writing to the file descriptor: this unifies and clearly deliniates user and kernel responsibilities.  
 
