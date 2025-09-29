@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <deque>
+#include <string>
 
 class Reader;
 class Writer;
@@ -25,6 +27,17 @@ protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
   bool error_ {};
+
+  bool closed_ {};
+  // void set_peek_contents();
+
+  // [TODO] Can I use a deque?
+  std::string peek_contents {};
+  static const int PEEK_CONTENTS_SIZE = 3;
+  std::deque<char> dq {};
+  uint64_t tot_pushed {0};
+  uint64_t tot_popped {0}; 
+  uint64_t dq_len {0};
 };
 
 class Writer : public ByteStream

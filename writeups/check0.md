@@ -1,19 +1,19 @@
 Checkpoint 0 Writeup
 ====================
 
-My name: [your name here]
+My name: Arjun Inamdar
 
-My SUNet ID: [your sunetid here]
+My SUNet ID: arjun05 
 
-I collaborated with: [list sunetids here]
+I collaborated with: ganeshve, flt
 
-I would like to credit/thank these classmates for their help: [list sunetids here]
+I would like to credit/thank these classmates for their help: Ganesh Venu (ganeshve) 
 
-This lab took me about [n] hours to do. I [did/did not] attend the lab session.
+This lab took me about 5 hours to do. I did attend the lab session.
 
 My secret code from section 2.1 was: [code here]
 
-I was surprised by or edified to learn that: [describe]
+I was surprised by or edified to learn that: Sockets and connections are handled through file descriptors. I had prior knowledge of how file descriptors worked (from CS111), but didn't fully realize that Unix systems used this abstraction for sockets and network handling. This is an elegant approach to unifying the computer's various responsibilities. This checkpoint taught me that reading/writing information to/from a socket is as simple as reading/writing to the file descriptor: this unifies and clearly deliniates user and kernel responsibilities.  
 
 Describe ByteStream implementation. [Describe data structures and
 approach taken. Describe alternative designs considered or tested.
@@ -23,8 +23,8 @@ bugs, asymptotic performance, empirical performance, required
 implementation time and difficulty, and other factors. Include any
 measurements if applicable.]
 
-Implementation Challenges:
-[]
+Implementation Challenges: 
+
 
 Remaining Bugs:
 []
