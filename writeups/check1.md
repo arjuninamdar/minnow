@@ -27,7 +27,7 @@ Question 2.1.)
 
 4.c.) There were no duplicates that I detected on the 1000 ping run.
 
-4.d.) Yes, Wireshark clearly shows some matching in the structures of the datagrams. 
+4.e.) Yes, Wireshark clearly shows some matching in the structures of the datagrams. 
 The following are each of the fields of the datagram and the respective values I
 observed: 
 
@@ -46,7 +46,7 @@ Destination Address: 10.144.0.128
 
 However, I couldn't find any "Options" or "Padding" values.
 
-4.e.) There were some differences in the sending and recieving packet. This is because
+4.f.) There were some differences in the sending and recieving packet. This is because
 the TTL is decremented every time it hits a node, so the TTL field will be different. Also, 
 the checksum is different as a result because the TTL is a part of it. 
 
@@ -63,14 +63,13 @@ Bytestream if so.
 An alternate approach considered was storing tuple pairs of the unassembled indices in a
 vector (sorted by index). However, there's complexity with inserting and then merging the
 indices algorithmically, and creating and concatenating the strings would've taken linear time
-(with respect to the size of the strings) iterating over the array. My approach is strictly linear
+(with respect to the size of the strings) atop of iterating over the array. My approach is strictly linear
 with respect to the size of the buffer per-call.
 
 I also considered using a tree. Each node would store an interval [min, max] which would represent
-the minimum and maximum intervals of the unassembled strings as children, and the leaves would store
-the strings themselves. Insertion implementation is non-trivial and can be complex. Additionally, 
-finding the leftmost string (in the case we want to push it to the ByteStream), would require you to
-iterate the height of the tree in the worst-case. 
+the minimum and maximum intervals of the unassembled children strings, and the leaves would store
+the strings themselves. Insertion implementation is non-trivial and can be complex, also due to my
+iterate the height of the tree in the worst-case.
 
 Implementation Challenges:
 
@@ -95,10 +94,15 @@ coordination is necessary.
 - If applicable: I received help from a former student in this class,
   another expert, or a chatbot or other AI system (e.g. ChatGPT,
   Gemini, Claude, etc.), with the following questions or prompts:
-  [please list questions/prompts]
 
-- Optional: I had unexpected difficulty with: [describe]
+I asked syntax-related and high-level implementation related questions, 
+like:
 
-- Optional: I think you could make this lab better by: [describe]
+How did you consider using a vector and what trade-offs did you consider as it related to other
+data structures internally? 
 
-- Optional: I'm not sure about: [describe]
+How did you use GDB to debug your code? How do you setup GDB? 
+
+What is the time complexity of string concatenation in C++?
+
+Etc.
