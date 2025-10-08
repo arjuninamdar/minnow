@@ -27,11 +27,7 @@ protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
   bool error_ {};
-
   bool closed_ {};
-  // void set_peek_contents();
-
-  // [TODO] Can I use a deque?
   std::string peek_contents {};
   static const int PEEK_CONTENTS_SIZE = 3;
   std::deque<char> dq {};

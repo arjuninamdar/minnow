@@ -2,6 +2,10 @@
 
 #include "byte_stream.hh"
 
+#include <string>
+#include <vector>
+#include <tuple>
+
 class Reassembler
 {
 public:
@@ -43,4 +47,9 @@ public:
 
 private:
   ByteStream output_;
+  uint64_t start_index {0};
+  uint64_t last_index {0};
+  bool seen_last_substr {};
+  std::vector<char> buffer {};
+  std::vector<bool> init {};
 };

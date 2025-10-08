@@ -5,17 +5,10 @@ using namespace std;
 
 ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
 
-/*
- * [TODO] Should I create this helper? It seems to be very helpful! 
-void ByteStream::set_peek_contents() {
-	peek_contents.assign(dq.begin(), dq.begin() + min(dq.length(), PEEK_CONTENTS_SIZE));
-}
-*/
 
 // Push data to stream, but only as much as available capacity allows.
 void Writer::push( string data )
 {
-	// [TODO] Do we need to check if this is closed? (similar for Reader::pop)
 	string to_push = data.substr(0, min(available_capacity(), data.length()));
 	for (unsigned char b : to_push) {
 		dq.push_back(b);
@@ -30,7 +23,6 @@ void Writer::push( string data )
 // Signal that the stream has reached its ending. Nothing more will be written.
 void Writer::close()
 {
-	// [TODO] is there additional processing required?
 	closed_ = true;
 }
 
