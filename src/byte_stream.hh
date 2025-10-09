@@ -1,10 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
-#include <string_view>
 #include <deque>
 #include <string>
+#include <string_view>
 
 class Reader;
 class Writer;
@@ -31,9 +30,9 @@ protected:
   std::string peek_contents {};
   static const int PEEK_CONTENTS_SIZE = 3;
   std::deque<char> dq {};
-  uint64_t tot_pushed {0};
-  uint64_t tot_popped {0}; 
-  uint64_t dq_len {0};
+  uint64_t tot_pushed { 0 };
+  uint64_t tot_popped { 0 };
+  uint64_t dq_len { 0 };
 };
 
 class Writer : public ByteStream
