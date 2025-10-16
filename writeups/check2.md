@@ -12,7 +12,7 @@ I would like to thank/reward these classmates for their help: Ganesh Venu
 This lab took me about 10 hours to do. I did not attend the lab session.
 
 Program Structure and Design: When designing Wrap32, I took advantages of the properties of
-integer overflow. I know that upon overflow causes the result to wrap around re-starting from
+integer overflow. I know that overflow causes the result to wrap around re-starting from
 0, so I simply added the jump to the starting point after casting. 
 
 For unwrap, I took advantage of the fact that once we found the appropriate "initial jump"
@@ -20,7 +20,7 @@ from the current number to the zero point, we simply had to find the approprite 
 segment in the upper 32 bits of the number. Being more mathematically specific, 
 2^(32)c + (the computed offset) is a valid absolute seqno given any c >= 0. From here, 
 finding this c given the checkpoint becomes easier, as we only care about the same or 
-neighboring (+/- 1) relative to the checkpoints' c. As a result, I considered all of the 
+neighboring (+/- 1) relative to the checkpoint's c. As a result, I considered all of the 
 numbers and returned the one closest to the checkpoint.
 
 In TCPReceiver, there are several important design decisions I made. I first chose to defer the
