@@ -6,6 +6,9 @@
 
 #include <functional>
 
+// is the following include necessary?
+#include <list>
+
 class TCPSender
 {
 public:
@@ -42,4 +45,23 @@ private:
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+
+  // we have to keep track of outstanding segments
+  std::list<TCPSenderMessage> outstanding_messages_ {};
+  uint64_t consecutive_retransmissions_{};
+  uint64_t curr_RTO_ms_ {};
+
+  uint64_t absolute_ackno {};
+  uint16_t window_size {1};
+  uint64_t sequence_numbers_in_flight_ {};
+
+  bool timer_active {};
+  uint64_t time_elapsed {};
+
+
+
+  //[TODO]: Is the following state redundant? 
+  bool SYN_sent {};
+  bool FIN_sent {};
+  bool RST_sent {};
 };

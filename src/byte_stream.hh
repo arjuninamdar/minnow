@@ -27,12 +27,9 @@ protected:
   uint64_t capacity_;
   bool error_ {};
   bool closed_ {};
-  std::string peek_contents {};
-  static const int PEEK_CONTENTS_SIZE = 3;
-  std::deque<char> dq {};
-  uint64_t tot_pushed { 0 };
-  uint64_t tot_popped { 0 };
-  uint64_t dq_len { 0 };
+  
+  std::string buffer_ {};
+  uint64_t bytes_pushed_ {};
 };
 
 class Writer : public ByteStream

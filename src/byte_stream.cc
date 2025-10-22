@@ -8,14 +8,9 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
 // Push data to stream, but only as much as available capacity allows.
 void Writer::push( string data )
 {
-  string to_push = data.substr( 0, min( available_capacity(), data.length() ) );
-  for ( unsigned char b : to_push ) {
-    dq.push_back( b );
-  }
-
-  tot_pushed += to_push.length();
-  dq_len = dq.size();
-  peek_contents.assign( dq.begin(), dq.begin() + min( dq_len, static_cast<uint64_t>( PEEK_CONTENTS_SIZE ) ) );
+   data.resize(min(data.size(),	available_capacity()));
+   buffer_ += data;
+   bytes_pushed_ += data.size();
 }
 
 // Signal that the stream has reached its ending. Nothing more will be written.
@@ -33,13 +28,13 @@ bool Writer::is_closed() const
 // How many bytes can be pushed to the stream right now?
 uint64_t Writer::available_capacity() const
 {
-  return capacity_ - dq_len;
+  return capacity_ - buffer_.size();
 }
 
 // Total number of bytes cumulatively pushed to the stream
 uint64_t Writer::bytes_pushed() const
 {
-  return tot_pushed;
+  return bytes_pushed_;
 }
 
 // Peek at the next bytes in the buffer -- ideally as many as possible.
@@ -48,36 +43,29 @@ uint64_t Writer::bytes_pushed() const
 // the caller to do a lot of extra work.
 string_view Reader::peek() const
 {
-  return string_view( peek_contents );
+  return buffer_; 
 }
 
 // Remove `len` bytes from the buffer.
 void Reader::pop( uint64_t len )
 {
-  int to_pop = min( len, dq_len );
-  for ( int i = 0; i < to_pop; ++i ) {
-    dq.pop_front();
-  }
-
-  tot_popped += to_pop;
-  dq_len -= to_pop;
-  peek_contents.assign( dq.begin(), dq.begin() + min( dq_len, static_cast<uint64_t>( PEEK_CONTENTS_SIZE ) ) );
+  buffer_.erase( 0, len );
 }
 
 // Is the stream finished (closed and fully popped)?
 bool Reader::is_finished() const
 {
-  return closed_ && ( bytes_buffered() == 0 );
+  return closed_ && buffer_.empty(); 
 }
 
 // Number of bytes currently buffered (pushed and not popped)
 uint64_t Reader::bytes_buffered() const
 {
-  return dq_len;
+  return buffer_.size(); 
 }
 
 // Total number of bytes cumulatively popped from stream
 uint64_t Reader::bytes_popped() const
 {
-  return tot_popped;
+  return bytes_pushed_ - buffer_.size(); 
 }
