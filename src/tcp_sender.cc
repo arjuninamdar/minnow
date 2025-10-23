@@ -1,6 +1,7 @@
 #include "tcp_sender.hh"
 #include "debug.hh"
 #include "tcp_config.hh"
+#include <cmath>
 
 using namespace std;
 
@@ -19,22 +20,15 @@ uint64_t TCPSender::consecutive_retransmissions() const
 void TCPSender::push( const TransmitFunction& transmit )
 {
 	if(reader().has_error()) {
-		// [TODO]: remove the below!
-		RST_sent = true;
 		transmit(make_empty_message());
 		return;
 	}
 
+	// we assume that the window size is 1 for push when set to 0
 	uint64_t effective_window_size = (window_size == 0) ? 1 : window_size;
 	uint64_t boundary_abs_seqno = absolute_ackno + effective_window_size;
-
-	// we always will assume that prior to string, SYN has/will be sent
- 	uint64_t last_valid_index = max(static_cast<uint64_t>(0), boundary_abs_seqno - (reader().bytes_popped() + 1));
+	uint64_t last_valid_index = max(static_cast<uint64_t>(0), boundary_abs_seqno - (reader().bytes_popped() + 1));
 	string buffer = string(reader().peek().substr(0, last_valid_index));
-
-	if (reader().peek() == "abc") {
-		// set breakpoiint here
-	}
 
 	if (buffer.size() == 0) {
 		TCPSenderMessage new_segment;
@@ -46,13 +40,14 @@ void TCPSender::push( const TransmitFunction& transmit )
 			sequence_numbers_in_flight_ += 1;
 		}
 
-
+		// we are ready to send FIN if the ByteStream has completed
 		if (reader().is_finished() && (new_segment.seqno.unwrap(isn_, reader().bytes_popped()) + new_segment.sequence_length()) < boundary_abs_seqno && !FIN_sent) { 
 			new_segment.FIN = true;
 			sequence_numbers_in_flight_ += 1;
 			FIN_sent = true;
 		}
 
+		// transmit if have seqnos to send
 		if (new_segment.sequence_length() > 0) {
 			transmit(new_segment);
 			outstanding_messages_.push_back(new_segment);
@@ -64,7 +59,9 @@ void TCPSender::push( const TransmitFunction& transmit )
 	while(segment_begin < buffer.size()) {
 		uint64_t segment_end = min(segment_begin + TCPConfig::MAX_PAYLOAD_SIZE, buffer.size());
 		TCPSenderMessage new_segment;
-		new_segment.payload = buffer.substr(segment_begin, segment_end - segment_begin); 
+		new_segment.payload = buffer.substr(segment_begin, segment_end - segment_begin);
+
+		// the +1 holds if the SYN has already been sent
 		new_segment.seqno = isn_ + reader().bytes_popped() + 1;
 		
 		if (!SYN_sent) {
@@ -106,6 +103,8 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 
 	auto curr_message = outstanding_messages_.begin();
 	uint64_t largest_absolute_ackno = reader().bytes_popped() + (SYN_sent ? 1 : 0) + (FIN_sent ? 1 : 0);
+
+	// catches cases when the ackno claims to have seen seqnos not sent yet
 	if (msg.ackno.has_value() && largest_absolute_ackno < (msg.ackno->unwrap(isn_, reader().bytes_popped())))
 		return;
 
@@ -115,7 +114,6 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 		if (absolute_ackno >= last_seqno) {
 			sequence_numbers_in_flight_ -= curr_message->sequence_length();
 			curr_message = outstanding_messages_.erase(curr_message);
-			curr_RTO_ms_ = initial_RTO_ms_;
 			consecutive_retransmissions_ = 0;	
 			time_elapsed = 0;
 
@@ -132,8 +130,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-	// [TODO]: is this how we handle the initiliztion
-	curr_RTO_ms_ = max(curr_RTO_ms_, initial_RTO_ms_);
+	uint64_t curr_RTO_ms_ = initial_RTO_ms_ * pow(2, consecutive_retransmissions_);  
 	if (timer_active) {
 		time_elapsed += ms_since_last_tick;
 	}
@@ -145,7 +142,6 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
 
 		if (window_size > 0) {
 			consecutive_retransmissions_ += 1;
-			curr_RTO_ms_ *= 2;
 		}
 
 		time_elapsed = 0;
