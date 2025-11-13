@@ -9,6 +9,38 @@
 
 using namespace std;
 
+//! \param[in] sender_ip_address the sender's IP address
+//! \param[in] target_ip_address the target IP address
+//! \param[in] opcode the ARP message type, either reply or request
+//! \param[in] sender_ethernet_address the sender's Ethernet address
+//! \param[in] target_ethernet_address the target's Ethernet address (empty if a ARP Request)
+EthernetFrame NetworkInterface::construct_arp_message( uint32_t sender_ip_address,
+                                                       uint32_t target_ip_address,
+                                                       uint16_t opcode,
+                                                       EthernetAddress sender_ethernet_address,
+                                                       EthernetAddress target_ethernet_address = {} )
+{
+  ARPMessage arp_message;
+  arp_message.sender_ip_address = sender_ip_address;
+  arp_message.target_ip_address = target_ip_address;
+  arp_message.sender_ethernet_address = sender_ethernet_address;
+
+  // will be empty/default value for ARP Requests (address not known)
+  arp_message.target_ethernet_address = target_ethernet_address;
+  arp_message.opcode = opcode;
+
+  EthernetHeader ethernet_header;
+  ethernet_header.type = EthernetHeader::TYPE_ARP;
+  ethernet_header.src = sender_ethernet_address;
+
+  // always broadcast if this is an ARP Request
+  ethernet_header.dst = ( opcode == ARPMessage::OPCODE_REQUEST ) ? ETHERNET_BROADCAST : target_ethernet_address;
+  EthernetFrame ethernet_frame;
+  ethernet_frame.header = ethernet_header;
+  ethernet_frame.payload = serialize( arp_message );
+  return ethernet_frame;
+}
+
 //! \param[in] ethernet_address Ethernet (what ARP calls "hardware") address of the interface
 //! \param[in] ip_address IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface( string_view name,
@@ -30,134 +62,91 @@ NetworkInterface::NetworkInterface( string_view name,
 //! can be converted to a uint32_t (raw 32-bit IP address) by using the Address::ipv4_numeric() method.
 void NetworkInterface::send_datagram( InternetDatagram dgram, const Address& next_hop )
 {
-	EthernetFrame ethernet_frame;
-	EthernetHeader ethernet_header;
-	ethernet_header.src = ethernet_address_; 
-	dgram.header.src = ip_address_.ipv4_numeric();
-	dgram.header.dst = next_hop.ipv4_numeric();
+  EthernetFrame ethernet_frame;
 
-	if (ethernet_to_ip_.find(next_hop.ipv4_numeric()) != ethernet_to_ip_.end()) {
-		ethernet_header.type = EthernetHeader::TYPE_IPv4;
-		ethernet_header.dst = ethernet_to_ip_[next_hop.ipv4_numeric()].first;
-		ethernet_frame.header = ethernet_header;
-		ethernet_frame.payload = serialize(dgram);
-		transmit(ethernet_frame);
-		return;
-	} else if (arp_message_times_.find(next_hop.ipv4_numeric()) != arp_message_times_.end()) {
-		arp_message_times_[next_hop.ipv4_numeric()].push_back({ dgram, curr_MS });
-		return;
-	}
+  if ( ethernet_to_ip_.find( next_hop.ipv4_numeric() ) != ethernet_to_ip_.end() ) {
+    EthernetHeader ethernet_header;
+    ethernet_header.src = ethernet_address_;
+    ethernet_header.type = EthernetHeader::TYPE_IPv4;
+    ethernet_header.dst = ethernet_to_ip_[next_hop.ipv4_numeric()].first;
+    ethernet_frame.header = ethernet_header;
+    ethernet_frame.payload = serialize( dgram );
+  } else if ( arp_message_times_.find( next_hop.ipv4_numeric() ) != arp_message_times_.end() ) {
+    arp_message_times_[next_hop.ipv4_numeric()].second.push_back( dgram );
+    return;
+  } else {
+    // we know that no ARP request has been sent in past 5 seconds, so send
+    ethernet_frame = construct_arp_message(
+      ip_address_.ipv4_numeric(), next_hop.ipv4_numeric(), ARPMessage::OPCODE_REQUEST, ethernet_address_ );
 
-	ARPMessage arp_message;
-	arp_message.opcode = ARPMessage::OPCODE_REQUEST;
-	arp_message.sender_ethernet_address = ethernet_address_;
-	arp_message.sender_ip_address = ip_address_.ipv4_numeric();
-	arp_message.target_ip_address = next_hop.ipv4_numeric();
-	
-	ethernet_header.type = EthernetHeader::TYPE_ARP;
-	ethernet_header.dst = ETHERNET_BROADCAST;
-	ethernet_frame.header = ethernet_header;
-	ethernet_frame.payload = serialize(arp_message);
-	transmit(ethernet_frame);
-
-	arp_message_times_[next_hop.ipv4_numeric()] = { { dgram, curr_MS } };
-  /*
-  if (known) {
-    
+    arp_message_times_[next_hop.ipv4_numeric()].first = curr_MS;
+    arp_message_times_[next_hop.ipv4_numeric()].second = { dgram };
   }
 
-  debug( "unimplemented send_datagram called" );
-  (void)dgram;
-  (void)next_hop;
-  */
+  transmit( ethernet_frame );
 }
 
 //! \param[in] frame the incoming Ethernet frame
 void NetworkInterface::recv_frame( EthernetFrame frame )
 {
-	if (frame.header.type == EthernetHeader::TYPE_IPv4) {
-		InternetDatagram internet_datagram;
-		if (parse(internet_datagram, frame.payload)) {
-			datagrams_received_.push(internet_datagram);
-		}
+  if ( frame.header.dst != ethernet_address_ && frame.header.dst != ETHERNET_BROADCAST ) {
+    return;
+  }
 
-		return;
-	}
-	
-	ARPMessage arp_message;
-	if (!parse(arp_message, frame.payload)) {
-		return;		
-	}
+  if ( frame.header.type == EthernetHeader::TYPE_IPv4 ) {
+    InternetDatagram internet_datagram;
+    if ( parse( internet_datagram, frame.payload ) ) {
+      datagrams_received_.push( internet_datagram );
+    }
 
-	ethernet_to_ip_[arp_message.sender_ip_address] = { arp_message.sender_ethernet_address, curr_MS };
-	if (arp_message.opcode == ARPMessage::OPCODE_REQUEST) {
-		ARPMessage arp_message_reply;
-		arp_message_reply.opcode = ARPMessage::OPCODE_REPLY;
-		arp_message_reply.sender_ip_address = ip_address_.ipv4_numeric();
-		arp_message_reply.target_ip_address = arp_message.sender_ip_address;
-		
-		EthernetHeader ethernet_frame_reply_header;
-		ethernet_frame_reply_header.dst = arp_message.sender_ethernet_address;
-		ethernet_frame_reply_header.src = ethernet_address_;
-		ethernet_frame_reply_header.type = EthernetHeader::TYPE_ARP;
+    return;
+  }
 
-		EthernetFrame ethernet_frame_reply;
-		ethernet_frame_reply.header = ethernet_frame_reply_header;
-		ethernet_frame_reply.payload = serialize(arp_message_reply);
-		transmit(ethernet_frame_reply);
-		return;
-	}
+  ARPMessage arp_message;
+  if ( !parse( arp_message, frame.payload ) ) {
+    return;
+  }
 
+  // always learn the mapping and flush the cache, even if unintended for us
+  ethernet_to_ip_[arp_message.sender_ip_address] = { arp_message.sender_ethernet_address, curr_MS };
+  if ( arp_message.opcode == ARPMessage::OPCODE_REQUEST
+       && arp_message.target_ip_address == ip_address_.ipv4_numeric() ) {
+    EthernetFrame ethernet_frame_reply = construct_arp_message( ip_address_.ipv4_numeric(),
+                                                                arp_message.sender_ip_address,
+                                                                ARPMessage::OPCODE_REPLY,
+                                                                ethernet_address_,
+                                                                arp_message.sender_ethernet_address );
+    transmit( ethernet_frame_reply );
+  }
 
-	// [TODO]: we have an ARP reply. Is it true that sender will be the nexthop?
-	auto vec = arp_message_times_[arp_message.sender_ip_address];
-	for (auto itr = vec.begin(); itr != vec.end(); itr += 1) {
-		send_datagram(itr->first, Address::from_ipv4_numeric(arp_message.sender_ip_address)); 
-	}
-	arp_message_times_.erase(arp_message.sender_ip_address);
-	/*
-	InternetDatagram dgram = arp_message_times_[arp_message.sender_ip_address].first;
-	arp_message_times_.erase(arp_message.sender_ip_address);
-	send_datagram(dgram, Address::from_ipv4_numeric(arp_message.sender_ip_address));
-	*/
+  if ( arp_message_times_.find( arp_message.sender_ip_address ) != arp_message_times_.end() ) {
+    for ( InternetDatagram ip_datagram : arp_message_times_[arp_message.sender_ip_address].second ) {
+      send_datagram( ip_datagram, Address::from_ipv4_numeric( arp_message.sender_ip_address ) );
+    }
 
-	/*
-  debug( "unimplemented recv_frame called" );
-  (void)frame;
-	*/
+    arp_message_times_.erase( arp_message.sender_ip_address );
+  }
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-	curr_MS += ms_since_last_tick;
+  curr_MS += ms_since_last_tick;
 
-	// [TODO]: How do I do this (now, these!!!) safely?
-	for (auto it = ethernet_to_ip_.begin(); it != ethernet_to_ip_.end(); ) {
-		// [TODO]: Store in constant? Also is the syntax correct?
-		if ((curr_MS - it->second.second) >= (1000 * 30)) {
-			it = ethernet_to_ip_.erase(it);
-		} else {
-			++it;
-		}
-	}
-	
-	for (auto outer_it = arp_message_times_.begin(); outer_it != arp_message_times_.end(); ) {
-		auto vec = outer_it->second;
+  for ( auto it = ethernet_to_ip_.begin(); it != ethernet_to_ip_.end(); ) {
+    if ( ( curr_MS - it->second.second ) >= ( 1000 * 30 ) ) {
+      it = ethernet_to_ip_.erase( it );
+    } else {
+      ++it;
+    }
+  }
 
-		for (auto it = vec.begin(); it != vec.end(); ) {
-			if ((it->second - curr_MS) >= 5 * 1000) {
-				it = vec.erase(it);
-			} else {
-				++it;
-			}
-		}
-
-
-		if (outer_it->second.size() == 0) {
-			outer_it = arp_message_times_.erase(outer_it);
-		} else {
-			++outer_it;
-		}
-	}
+  for ( auto it = arp_message_times_.begin(); it != arp_message_times_.end(); ) {
+    // we always clear the entire cache if the oldest datagram transmission >= 5 seconds
+    if ( ( curr_MS - it->second.first ) >= ( 1000 * 5 ) ) {
+      it = arp_message_times_.erase( it );
+    } else {
+      ++it;
+    }
+  }
 }

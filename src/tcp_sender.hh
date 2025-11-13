@@ -45,10 +45,10 @@ private:
   uint64_t initial_RTO_ms_;
 
   std::list<TCPSenderMessage> outstanding_messages_ {};
-  uint64_t consecutive_retransmissions_{};
+  uint64_t consecutive_retransmissions_ {};
 
   uint64_t absolute_ackno {};
-  uint16_t window_size {1};
+  uint16_t window_size { 1 };
   uint64_t sequence_numbers_in_flight_ {};
 
   bool timer_active {};

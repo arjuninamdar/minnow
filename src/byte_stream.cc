@@ -8,9 +8,9 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
 // Push data to stream, but only as much as available capacity allows.
 void Writer::push( string data )
 {
-   data.resize(min(data.size(),	available_capacity()));
-   buffer_ += data;
-   bytes_pushed_ += data.size();
+  data.resize( min( data.size(), available_capacity() ) );
+  buffer_ += data;
+  bytes_pushed_ += data.size();
 }
 
 // Signal that the stream has reached its ending. Nothing more will be written.
@@ -43,7 +43,7 @@ uint64_t Writer::bytes_pushed() const
 // the caller to do a lot of extra work.
 string_view Reader::peek() const
 {
-  return buffer_; 
+  return buffer_;
 }
 
 // Remove `len` bytes from the buffer.
@@ -55,17 +55,17 @@ void Reader::pop( uint64_t len )
 // Is the stream finished (closed and fully popped)?
 bool Reader::is_finished() const
 {
-  return closed_ && buffer_.empty(); 
+  return closed_ && buffer_.empty();
 }
 
 // Number of bytes currently buffered (pushed and not popped)
 uint64_t Reader::bytes_buffered() const
 {
-  return buffer_.size(); 
+  return buffer_.size();
 }
 
 // Total number of bytes cumulatively popped from stream
 uint64_t Reader::bytes_popped() const
 {
-  return bytes_pushed_ - buffer_.size(); 
+  return bytes_pushed_ - buffer_.size();
 }

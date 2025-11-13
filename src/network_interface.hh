@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <queue>
+#include <tuple>
 #include <unordered_map>
 
 // A "network interface" that connects IP (the internet layer, or network layer)
@@ -83,11 +84,20 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
-	
 
-  // custom ones!
-  // cache of address -> (eth, expiry)
+  // Constructs an ARP Message (supports requests and replies)
+  EthernetFrame construct_arp_message( uint32_t sender_ip_address,
+                                       uint32_t target_ip_address,
+                                       uint16_t opcode,
+                                       EthernetAddress sender_ethernet_address,
+                                       EthernetAddress target_ethernet_address );
+
+  // The mapping from Ethernet to IP
   std::unordered_map<uint32_t, std::pair<EthernetAddress, size_t>> ethernet_to_ip_ {};
-  std::unordered_map<uint32_t, std::vector<std::pair<InternetDatagram, size_t>>> arp_message_times_ {};
-  size_t curr_MS {}; 
+
+  // Stores all of the datagrams and the oldest one transmitted for a particular IP address
+  std::unordered_map<uint32_t, std::pair<size_t, std::vector<InternetDatagram>>> arp_message_times_ {};
+
+  // The cumulative running time of the program (as updated by `tick()`)
+  size_t curr_MS {};
 };
