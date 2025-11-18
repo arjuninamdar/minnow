@@ -34,4 +34,7 @@ public:
 private:
   // The router's collection of network interfaces
   std::vector<std::shared_ptr<NetworkInterface>> interfaces_ {};
+
+  // Stores prefix, length, address (optional), and the interface number
+  std::vector<std::tuple<uint32_t, uint8_t, std::optional<Address>, size_t>> routing_table_ {};
 };

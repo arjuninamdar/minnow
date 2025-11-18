@@ -16,15 +16,45 @@ void Router::add_route( const uint32_t route_prefix,
                         const optional<Address> next_hop,
                         const size_t interface_num )
 {
-  cerr << "DEBUG: adding route " << Address::from_ipv4_numeric( route_prefix ).ip() << "/"
-       << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
-       << " on interface " << interface_num << "\n";
-
-  debug( "unimplemented add_route() called" );
+	routing_table_.push_back({ route_prefix, prefix_length, next_hop, interface_num });
 }
 
 // Go through all the interfaces, and route every incoming datagram to its proper outgoing interface.
 void Router::route()
 {
-  debug( "unimplemented route() called" );
+	for (shared_ptr<NetworkInterface> curr_interface : interfaces_) {
+		queue<InternetDatagram> datagrams = curr_interface->datagrams_received();
+		while (!datagrams.empty()) {
+			InternetDatagram datagram = datagrams.front();
+			datagrams.pop();
+
+			uint32_t final_dest = datagram.header.dst;
+			optional<size_t> routing_table_entry = -1;
+
+			for (size_t i = 0; i < routing_table_.size(); ++i) {
+				uint32_t curr_route_prefix = get<0>(routing_table_[i]);
+				uint8_t curr_prefix_length = get<1>(routing_table_[i]);
+				uint32_t final_dest_match = final_dest << (32 - curr_prefix_length);
+
+
+				if (final_dest_match == curr_route_prefix && (!routing_table_entry.has_value() || get<1>(routing_table_[*routing_table_entry]) > curr_prefix_length))
+					routing_table_entry = i;
+			}
+
+			if (!routing_table_entry.has_value() || --datagram.header.ttl <= 0)
+				continue;
+
+			size_t interface_num = get<3>(routing_table_[*routing_table_entry]);
+			optional<Address> next_hop_optional = get<2>(routing_table_[*routing_table_entry]);
+			Address next_hop;
+
+			if (next_hop_optional.has_value()) {
+				next_hop = Address::from_ipv4_numeric(final_dest);
+			} else {
+				next_hop = *next_hop_optional;
+			}
+
+			interface(interface_num)->send_datagram(datagram, next_hop);
+		}
+	}
 }
